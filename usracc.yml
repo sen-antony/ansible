@@ -1,0 +1,74 @@
+---
+- name: User Account Management and Chrome Restriction
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: "usernames"
+      prompt: "Enter the usernames to create (comma-separated if multiple)"
+      private: no
+    - name: "password"
+      prompt: "Enter the password for the users"
+      private: yes
+    - name: "sys_id"
+      prompt: "Enter the sys_id of the incident"
+      private: no
+  tasks:
+    - name: Create new users
+      ansible.builtin.user:
+        name: "{{ item }}"
+        password: "{{ password | password_hash('sha512') }}"
+        state: present
+        groups: ansible_group
+        shell: /bin/bash
+      loop: "{{ usernames.split(',') }}"
+    - name: Verify user creation
+      shell: "id {{ item }}"
+      register: user_verification
+      ignore_errors: yes
+      loop: "{{ usernames.split(',') }}"
+    - name: Restrict Chrome for created users
+      shell: |
+        usernames= "{{ usernames.split(',') | join(' ') }}"
+        policy_file= "/etc/opt/chrome/policies/managed/restrict_chrome.json"
+        cat <<EOF > $policy_file
+        {
+          "URLBlacklist": ["*"]
+        }
+        EOF
+        for user in $usernames; do
+          user_policy_dir= "/home/$user/.config/google-chrome/Default"
+          mkdir -p $user_policy_dir
+          cp $policy_file $user_policy_dir
+        done
+        echo "Chrome restricted for users: $usernames"
+    - name: Update work notes in ServiceNow
+      uri:
+        url: https://nowlearning-nlinst02562304-1qcas-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46OWhBcmYzSDJzS0J5"
+          Content-Type: "application/json"
+        body:
+          {
+            "work_notes": "User creation verification: {{ user_verification.results | map(attribute='stdout') | join('\n') | default('Verification failed or users do not exist') }}\nChrome restricted for users: {{ usernames }}"
+          }
+        body_format: json
+        status_code: 200
+    - name: Resolve incident in ServiceNow
+      uri:
+        url: https://nowlearning-nlinst02562304-1qcas-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46OWhBcmYzSDJzS0J5"
+          Content-Type: "application/json"
+        body:
+          {
+            "state": "6",
+            "close_code": "Resolved by request",
+            "close_notes": "User accounts created successfully and Chrome restricted."
+          }
+        body_format: json
+        status_code: 200
+    - name: Run cluster creation script
+      script: /home/ansible/cluster_creation.sh
+

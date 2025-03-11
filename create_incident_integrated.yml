@@ -1,0 +1,130 @@
+---
+- name: Manage User Requests in ServiceNow
+  hosts: localhost
+  vars_prompt:
+    - name: "user_action"
+      prompt: "Enter the action (create_user/remove_user/monitor_user/enable_user/disable_user)"
+      private: no
+    - name: "usernames"
+      prompt: "Enter the usernames (comma-separated if multiple)"
+      private: no
+  tasks:
+    - name: Create user request in ServiceNow
+      when: user_action == "create_user"
+      uri:
+        url: https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          short_description: "Create user accounts"
+          description: "Request to create user accounts with the following names: {{ usernames }}"
+          priority: "2"
+          caller_id: "Arsil"
+          assigned_to: "Sen"
+          assignment_group: "Ansible Group"
+        status_code: [200, 201]
+      register: create_response
+
+    - name: Remove user request in ServiceNow
+      when: user_action == "remove_user"
+      uri:
+        url: https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          short_description: "Remove user accounts"
+          description: "Request to remove user accounts with the following names: {{ usernames }}"
+          priority: "2"
+          caller_id: "Arsil"
+          assigned_to: "Sen"
+          assignment_group: "Ansible Group"
+        status_code: [200, 201]
+      register: remove_response
+
+    - name: Monitor user request in ServiceNow
+      when: user_action == "monitor_user"
+      uri:
+        url: https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          short_description: "Monitor user accounts"
+          description: "Request to monitor user accounts with the following names: {{ usernames }}"
+          priority: "2"
+          caller_id: "Arsil"
+          assigned_to: "Sen"
+          assignment_group: "Ansible Group"
+        status_code: [200, 201]
+      register: monitor_response
+
+    - name: Enable user request in ServiceNow
+      when: user_action == "enable_user"
+      uri:
+        url: https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          short_description: "Enable user accounts"
+          description: "Request to enable user accounts with the following names: {{ usernames }}"
+          priority: "2"
+          caller_id: "Arsil"
+          assigned_to: "Sen"
+          assignment_group: "Ansible Group"
+        status_code: [200, 201]
+      register: enable_response
+
+    - name: Disable user request in ServiceNow
+      when: user_action == "disable_user"
+      uri:
+        url: https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          short_description: "Disable user accounts"
+          description: "Request to disable user accounts with the following names: {{ usernames }}"
+          priority: "2"
+          caller_id: "Arsil"
+          assigned_to: "Sen"
+          assignment_group: "Ansible Group"
+        status_code: [200, 201]
+      register: disable_response
+
+    - name: Output sys_id for create_user
+      when: user_action == "create_user"
+      debug:
+        msg: "Created incident sys_id: {{ create_response.json.result.sys_id }}"
+
+    - name: Output sys_id for remove_user
+      when: user_action == "remove_user"
+      debug:
+        msg: "Created incident sys_id: {{ remove_response.json.result.sys_id }}"
+
+    - name: Output sys_id for monitor_user
+      when: user_action == "monitor_user"
+      debug:
+        msg: "Created incident sys_id: {{ monitor_response.json.result.sys_id }}"
+
+    - name: Output sys_id for enable_user
+      when: user_action == "enable_user"
+      debug:
+        msg: "Created incident sys_id: {{ enable_response.json.result.sys_id }}"
+
+    - name: Output sys_id for disable_user
+      when: user_action == "disable_user"
+      debug:
+        msg: "Created incident sys_id: {{ disable_response.json.result.sys_id }}"

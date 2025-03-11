@@ -1,0 +1,52 @@
+---
+- name: Enable a user account with Incident Logging
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: "usernames"
+      prompt: "Enter the usernames to enable (comma-separated if multiple)"
+      private: no
+    - name: "sys_id"
+      prompt: "Enter the sys_id of the incident"
+      private: no
+  tasks:
+    - name: Unlock user accounts
+      command: "usermod -U {{ item }}"
+      loop: "{{ usernames.split(',') }}"
+      ignore_errors: yes
+      
+    - name: Verify user account unlock
+      shell: "passwd -S {{ item }}"
+      register: user_verification
+      ignore_errors: yes
+      loop: "{{ usernames.split(',') }}"
+      
+    - name: Update work notes in ServiceNow
+      uri:
+        url: "https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}"
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "work_notes": "User account unlock verification: {{ user_verification.results | map(attribute='stdout') | join('\n') | default('Verification failed or user account not unlocked') }}"
+          }
+        body_format: json
+        status_code: 200
+      
+    - name: Resolve incident in ServiceNow
+      uri:
+        url: "https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}"
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "state": "6",
+            "close_code": "Resolved by request",
+            "close_notes": "User accounts enabled successfully."
+          }
+        body_format: json
+        status_code: 200

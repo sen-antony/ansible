@@ -1,0 +1,3 @@
+[all]
+centos1 ansible_become_pass=Netapp1!
+centos2 ansible_become_pass=Netapp1!
