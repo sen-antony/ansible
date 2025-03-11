@@ -1,0 +1,39 @@
+---
+- name: Add user to a group with Incident Logging
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: "username"
+      prompt: "Enter the username to add to the group"
+      private: no
+    - name: "groupname"
+      prompt: "Enter the group name"
+      private: no
+  tasks:
+    - name: Add user to the specified group
+      ansible.builtin.user:
+        name: "{{ username }}"
+        groups: "{{ groupname }}"
+      
+    - name: Verify user group addition
+      shell: "groups {{ username }}"
+      register: group_verification
+      ignore_errors: yes
+      
+    - name: Log incident in ServiceNow
+      uri:
+        url: "https://nowlearning-nlinst02509912-3ylym-0001.lab.service-now.com/api/now/table/incident"
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1lGSkhUQ0JTQmFk"
+          Content-Type: "application/json"
+        body:
+          {
+            "short_description": "User group management task",
+            "description": "Added user {{ username }} to group {{ groupname }} on all servers",
+            "priority": "2",
+            "assignment_group": "IT Automation Team",
+            "work_notes": "Group addition verification: {{ group_verification.stdout | default('Verification failed or user not in group') }}"
+          }
+        body_format: json
+        status_code: 201

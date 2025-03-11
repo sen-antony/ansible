@@ -1,0 +1,57 @@
+---
+- name: User Account Management 
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: "usernames"
+      prompt: "Enter the usernames to create (comma-separated if multiple)"
+      private: no
+    - name: "password"
+      prompt: "Enter the password for the users"
+      private: yes
+    - name: "sys_id"
+      prompt: "Enter the sys_id of the incident"
+      private: no
+  tasks:
+    - name: Create new users
+      ansible.builtin.user:
+        name: "{{ item }}"
+        password: "{{ password | password_hash('sha512') }}"
+        state: present
+        groups: ansible_group
+        shell: /bin/bash
+      loop: "{{ usernames.split(',') }}"
+    - name: Verify user creation
+      shell: "id {{ item }}"
+      register: user_verification
+      ignore_errors: yes
+      loop: "{{ usernames.split(',') }}"
+    - name: Update work notes in ServiceNow
+      uri:
+        url: https://nowlearning-nlinst02562304-1qcas-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "work_notes": "User creation verification: {{ user_verification.results | map(attribute='stdout') | join('\n') | default('Verification failed or users do not exist') }}"
+          }
+        body_format: json
+        status_code: 200
+    - name: Resolve incident in ServiceNow
+      uri:
+        url: https://nowlearning-nlinst02562304-1qcas-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "state": "6",
+            "close_code": "Resolved by request",
+            "close_notes": "User accounts created successfully."
+          }
+        body_format: json
+        status_code: 200
+
