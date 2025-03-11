@@ -1,0 +1,56 @@
+---
+- name: Manage user groups
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: "groupname"
+      prompt: "Enter the group name"
+      private: no
+    - name: "username"
+      prompt: "Enter the username to add to the group"
+      private: no
+  tasks:
+    - name: Create a group
+      ansible.builtin.group:
+        name: "{{ groupname }}"
+        state: present
+
+    - name: Add user to the group
+      ansible.builtin.user:
+        name: "{{ username }}"
+        groups: "{{ groupname }}"
+        append: yes
+
+    - name: Verify user group addition
+      shell: "groups {{ username }}"
+      register: group_verification
+      ignore_errors: yes
+
+    - name: Remove user from the group
+      ansible.builtin.user:
+        name: "{{ username }}"
+        groups: "{{ groupname }}"
+        state: absent
+        remove: yes
+
+    - name: Verify user group removal
+      shell: "groups {{ username }}"
+      register: group_removal_verification
+      ignore_errors: yes
+
+    - name: Delete the group
+      ansible.builtin.group:
+        name: "{{ groupname }}"
+        state: absent
+
+    - name: Verify group deletion
+      shell: "getent group {{ groupname }}"
+      register: group_deletion_verification
+      ignore_errors: yes
+
+    - name: Display verification results
+      debug:
+        msg: |
+          Group addition verification: {{ group_verification.stdout | default('Verification failed or user not in group') }}
+          Group removal verification: {{ group_removal_verification.stdout | default('Verification failed or user still in group') }}
+          Group deletion verification: {{ group_deletion_verification.stdout | default('Group deleted successfully') }}

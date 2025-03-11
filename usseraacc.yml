@@ -1,0 +1,75 @@
+---
+- name: User Account Management and Chrome Restriction
+  hosts: "{{ Hosts }}"
+  become: yes
+  vars_prompt:
+    - name: "Hosts"
+      prompt: "Enter the hosts you want to create the users"
+      private: no
+    - name: "usernames"
+      prompt: "Enter the usernames to create (comma-separated if multiple)"
+      private: no
+    - name: "password"
+      prompt: "Enter the password for the users"
+      private: yes
+    - name: "sys_id"
+      prompt: "Enter the sys_id of the incident"
+      private: no
+  tasks:
+    - name: Create new users
+      ansible.builtin.user:
+        name: "{{ item }}"
+        password: "{{ password | password_hash('sha512') }}"
+        state: present
+        groups: ansible_group
+        shell: /bin/bash
+      loop: "{{ usernames.split(',') }}"
+    - name: Verify user creation
+      shell: "id {{ item }}"
+      register: user_verification
+      ignore_errors: yes
+      loop: "{{ usernames.split(',') }}"
+    - name: Restrict Chrome for created users
+      shell: |
+        usernames= "{{ usernames.split(',') | join(' ') }}"
+        policy_file= "/etc/opt/chrome/policies/managed/restrict_chrome.json"
+        cat <<EOF > $policy_file
+        {
+          "URLBlacklist": ["*"]
+        }
+        EOF
+        for user in $usernames; do
+          user_policy_dir= "/home/$user/.config/google-chrome/Default"
+          mkdir -p $user_policy_dir
+          cp $policy_file $user_policy_dir
+        done
+        echo "Chrome restricted for users: $usernames"
+    - name: Ensure configuration directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: user
+        group: user
+        mode: '0755'
+      loop:
+        - /home/user/configuration
+        - /home/user/configuration/default
+    - name: Create a sample configuration file
+      copy:
+        content: |
+          key=value
+        dest: /home/user/configuration/default/sample_config.conf
+        owner: user
+        group: user
+        mode: '0644'
+    - name: Run cluster creation script
+      script: /home/ansible/cluster_creation.sh
+
+    - name: Copy resolving tasks to remote host
+      copy:
+        src: /home/ansible/resolving_tasks.yml
+        dest: /tmp/resolving_tasks.yml
+    - name: Include resolving tasks
+      include_tasks: /tmp/resolving_tasks.yml
+  
+

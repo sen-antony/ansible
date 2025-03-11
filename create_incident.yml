@@ -1,0 +1,35 @@
+---
+- name: Create Incident in ServiceNow
+  hosts: localhost
+  vars_prompt:
+    - name: "usernames"
+      prompt: "Enter the usernames to create (comma-separated if multiple)"
+      private: no
+  tasks:
+    - name: Create incident in ServiceNow
+      uri:
+        url: https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident
+        method: POST
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "short_description": "User account creation task",
+            "description": "Create user accounts with the following names: {{ usernames }}",
+            "priority": "2",
+            "caller_id": "Arsil",
+            "assigned_to": "Sen",
+            "assignment_group": "Ansible Group"
+          }
+        body_format: json
+        status_code: 201
+      register: incident_response
+
+    - name: Fetch incident ID
+      set_fact:
+        incident_id: "{{ incident_response.json.result.sys_id }}"
+
+    - name: Display incident ID
+      debug:
+        msg: "Incident created with ID: {{ incident_id }}"

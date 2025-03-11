@@ -1,0 +1,30 @@
+--
+- name: Update work notes in ServiceNow
+  uri:
+    url: https://nowlearning-nlinst02562304-1qcas-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}
+    method: PATCH
+    headers:
+      Authorization: "Basic YWRtaW46OWhBcmYzSDJzS0J5"
+        Content-Type: "application/json"
+    body:
+    {
+       "work_notes": "User creation verification: {{ user_verification.results | map(attribute='stdout') | join('\n') | default('Verification failed or users do not exist') }}\nChrome restricted for users: {{ usernames }}"
+    }
+    body_format: json
+    status_code: 200
+- name: Resolve incident in ServiceNow
+  uri:
+    url: https://nowlearning-nlinst02562304-1qcas-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}
+      method: PATCH
+    headers:
+      Authorization: "Basic YWRtaW46OWhBcmYzSDJzS0J5"
+      Content-Type: "application/json"
+    body:
+      {
+        "state": "6",
+        "caller_id": "Arsil",
+        "close_code": "Resolved by request",
+        "close_notes": "User accounts created successfully and Chrome restricted."
+      }
+    body_format: json
+    status_code: 200

@@ -1,0 +1,50 @@
+---
+- name: Monitor user activity
+  hosts: "{{ target_hosts }}"
+  become: yes
+  vars_prompt:
+    - name: "target_hosts"
+      prompt: "Enter the target hosts (comma-separated if multiple)"
+      private: no
+    - name: "usernames"
+      prompt: "Enter the usernames to check last login (comma-separated if multiple)"
+      private: no
+    - name: "sys_id"
+      prompt: "Enter the sys_id of the incident"
+      private: no
+  tasks:
+    - name: Check last login for each user
+      shell: "lastlog -u {{ item }}"
+      register: lastlog_output
+      ignore_errors: yes
+      loop: "{{ usernames.split(',') }}"
+      
+    - name: Update work notes in ServiceNow
+      uri:
+        url: "https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}"
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "work_notes": "User activity monitoring: {{ lastlog_output.results | map(attribute='stdout') | join('\n') | default('No login information available') }}"
+          }
+        body_format: json
+        status_code: 200
+      
+    - name: Resolve incident in ServiceNow
+      uri:
+        url: "https://nowlearning-nlinst02582545-7thbu-0001.lab.service-now.com/api/now/table/incident/{{ sys_id }}"
+        method: PATCH
+        headers:
+          Authorization: "Basic YWRtaW46N1BHQVdiTkQyR3pj"
+          Content-Type: "application/json"
+        body:
+          {
+            "state": "6",
+            "close_code": "Resolved by request",
+            "close_notes": "User activity monitoring completed successfully."
+          }
+        body_format: json
+        status_code: 200

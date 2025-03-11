@@ -1,0 +1,26 @@
+- name: User Account Management with Incident Logging
+  hosts: localhost
+  vars_prompt:
+    - name: "user_action"
+      prompt: "Enter the action (create_user/remove_user/monitor_user/enable_user/disable_user)"
+      private: no
+  tasks:
+    - name: Run create_user playbook
+      shell: ansible-playbook create_user.yml
+      when: user_action == "create_user"
+
+    - name: Run remove_user playbook
+      shell: ansible-playbook remove_user.yml
+      when: user_action == "remove_user"
+
+    - name: Run enable_user playbook
+      shell: ansible-playbook enable_user.yml
+      when: user_action == "enable_user"
+
+    - name: Run disable_user playbook
+      shell: ansible-playbook disable_user.yml
+      when: user_action == "disable_user"
+
+    - name: Run monitor_user playbook
+      shell: ansible-playbook monitor_user.yml
+      when: user_action == "monitor_user"
